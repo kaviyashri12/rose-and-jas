@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Decrypt & Verify - RSA Crypto Tool</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo">🔐 RSA Crypto Tool</div>
+            <div class="nav-links">
+                <a href="/">Home</a>
+                <a href="/generate_keys">Generate Keys</a>
+                <a href="/encrypt_sign">Encrypt + Sign</a>
+                <a href="/decrypt_verify" class="active">Decrypt + Verify</a>
+                <a href="/workflow">Workflow</a>
+                <a href="/profile">Profile</a>
+                <a href="/logout">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h1>📥 Decrypt & Verify Message</h1>
+        <p class="subtitle">Decrypt incoming messages and verify sender identity</p>
+
+        <!-- Key Status Check - Visible on Decrypt Page -->
+        <div id="keyStatus" style="margin-bottom: 1.5rem;"></div>
+
+        {% if messages %}
+        <div class="form-group">
+            <label>📨 Recent Messages:</label>
+            <select id="messageSelect" onchange="loadSelectedMessage()">
+                <option value="">Select a message to decrypt...</option>
+                {% for msg in messages %}
+                    <option value="{{ msg.id }}" data-encrypted="{{ msg.encrypted_message }}" data-signature="{{ msg.signature }}" data-sender="{{ msg.sender.username }}">
+                        From: {{ msg.sender.username }} - {{ msg.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
+
+        <div class="form-group">
+            <label>🔐 Encrypted Message:</label>
+            <textarea id="encryptedMessage" placeholder="Paste the encrypted message here..."></textarea>
+        </div>
+
+        <div class="form-group">
+            <label>✍️ Digital Signature:</label>
+            <textarea id="signatureInput" placeholder="Paste the digital signature here..."></textarea>
+        </div>
+
+        <div class="form-group">
+            <label>👤 Sender's Username:</label>
+            <input type="text" id="senderUsername" placeholder="Enter sender's username">
+            <small style="color: #666;">Example: alice, bob, etc.</small>
+        </div>
+
+        <div class="form-group">
+            <label>🔓 Your Private Key:</label>
+            <textarea id="receiverPrivateKey" placeholder="Your private key" readonly>{{ user.private_key if user.private_key else '⚠️ No private key found! Please generate keys first.' }}</textarea>
+        </div>
+
+        <button class="btn btn-primary" onclick="decryptAndVerify()">🔓 Decrypt & Verify</button>
+        <button class="btn btn-secondary" onclick="clearForm()">Clear Form</button>
+
+        <div id="decryptVerifyResult" style="margin-top: 2rem;"></div>
+
+        <!-- Troubleshooting Guide -->
+        <div style="margin-top: 2rem; padding: 1rem; background: #fff3cd; border-radius: 10px;">
+            <strong>🔧 Troubleshooting:</strong>
+            <ul style="margin-top: 0.5rem; margin-left: 1.5rem;">
+                <li><strong>Make sure you have generated keys:</strong> Go to <a href="/generate_keys">Generate Keys</a> page</li>
+                <li><strong>Ensure keys are saved:</strong> Click "Save Keys Permanently" after generation</li>
+                <li><strong>Check sender's username:</strong> Must be exactly correct (case-sensitive)</li>
+                <li><strong>Message must be encrypted with YOUR public key</strong></li>
+                <li><strong>Try using the message selector above</strong> to load messages from your inbox</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Check key status on page load
+        async function checkKeyStatus() {
+            try {
+                const response = await fetch('/api/check_keys');
+                const data = await response.json();
+                
+                const statusDiv = document.getElementById('keyStatus');
+                if (data.has_private_key) {
+                    statusDiv.innerHTML = '<div class="alert alert-success"><strong>✅ Key Status:</strong> You have valid ' + data.key_size + '-bit RSA keys! Ready to decrypt messages.</div>';
+                } else {
+                    statusDiv.innerHTML = '<div class="alert alert-warning"><strong>⚠️ Key Status:</strong> No keys found! Please go to <a href="/generate_keys">Generate Keys</a> page to create your key pair first.</div>';
+                }
+            } catch (error) {
+                console.error('Error checking keys:', error);
+            }
+        }
+        
+        // Check for message ID from profile page
+        const urlParams = new URLSearchParams(window.location.search);
+        const messageId = urlParams.get('message_id') || sessionStorage.getItem('viewMessageId');
+        
+        async function decryptAndVerify() {
+            const encryptedMessage = document.getElementById('encryptedMessage').value;
+            const signature = document.getElementById('signatureInput').value;
+            const senderUsername = document.getElementById('senderUsername').value;
+            
+            if (!encryptedMessage || !signature || !senderUsername) {
+                showNotification('Please fill all fields!', 'warning');
+                return;
+            }
+            
+            const resultDiv = document.getElementById('decryptVerifyResult');
+            const decryptBtn = event.target;
+            
+            setButtonLoading(decryptBtn, true);
+            resultDiv.innerHTML = '<div class="result-content"><span class="spinner"></span> Decrypting and verifying signature...</div>';
+            
+            try {
+                const response = await fetch('/api/decrypt_verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        encrypted_message: encryptedMessage,
+                        signature: signature,
+                        sender_username: senderUsername,
+                        message_id: messageId  // Send message_id to mark as read
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    if (data.signature_valid) {
+                        showNotification(`✅ Signature verified! Message from ${data.sender_username} is authentic.`, 'success');
+                        // Clear the stored message ID
+                        sessionStorage.removeItem('viewMessageId');
+                    } else {
+                        showNotification(`⚠️ Invalid signature! This message may be tampered.`, 'warning');
+                    }
+                    
+                    const validBadge = data.signature_valid 
+                        ? `<span class="badge badge-success" style="font-size: 1rem;">✓ SIGNATURE VALID - Verified: ${data.sender_username}</span>`
+                        : `<span class="badge badge-danger" style="font-size: 1rem;">✗ INVALID SIGNATURE - Cannot Verify Sender</span>`;
+                    
+                    resultDiv.innerHTML = `
+                        <div class="result-box">
+                            <div class="result-title">📄 Decrypted Message</div>
+                            <div class="result-content" style="background: #f0fdf4; font-size: 1.1rem;">${escapeHtml(data.decrypted_message)}</div>
+                            
+                            <div class="result-title" style="margin-top: 1rem;">✅ Signature Verification</div>
+                            <div class="result-content">${validBadge}</div>
+                            
+                            ${data.signature_valid ? `
+                                <div class="alert alert-success" style="margin-top: 1rem;">
+                                    <strong>✅ Identity Verified!</strong><br>
+                                    This message was definitely sent by: <strong>${data.sender_username}</strong><br>
+                                    The digital signature has been cryptographically verified.
+                                </div>
+                            ` : `
+                                <div class="alert alert-danger" style="margin-top: 1rem;">
+                                    <strong>⚠️ Security Warning!</strong><br>
+                                    This message may have been tampered with or is from an imposter!<br>
+                                    Do not trust the contents of this message.
+                                </div>
+                            `}
+                        </div>
+                    `;
+                } else {
+                    showNotification(data.error, 'error');
+                    resultDiv.innerHTML = `
+                        <div class="result-box error">
+                            <strong>❌ Decryption Failed</strong><br>
+                            ${escapeHtml(data.error)}
+                            <div class="alert alert-warning" style="margin-top: 1rem;">
+                                <strong>💡 Troubleshooting Tips:</strong><br>
+                                • Make sure you have generated and saved your keys<br>
+                                • Verify the sender's username is correct<br>
+                                • Ensure this message was encrypted for you<br>
+                                • Try regenerating your keys on the Generate Keys page
+                            </div>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                showNotification(error.message, 'error');
+                resultDiv.innerHTML = `<div class="result-box error">❌ Error: ${error.message}</div>`;
+            } finally {
+                setButtonLoading(decryptBtn, false);
+            }
+        }
+        
+        function loadSelectedMessage() {
+            const select = document.getElementById('messageSelect');
+            const selectedOption = select.options[select.selectedIndex];
+            
+            if (selectedOption && selectedOption.value) {
+                const encryptedMsg = selectedOption.getAttribute('data-encrypted');
+                const signature = selectedOption.getAttribute('data-signature');
+                const sender = selectedOption.getAttribute('data-sender');
+                
+                if (encryptedMsg && signature && sender) {
+                    document.getElementById('encryptedMessage').value = encryptedMsg;
+                    document.getElementById('signatureInput').value = signature;
+                    document.getElementById('senderUsername').value = sender;
+                    showNotification(`📨 Loaded message from ${sender}`, 'info');
+                }
+            }
+        }
+        
+        function clearForm() {
+            document.getElementById('encryptedMessage').value = '';
+            document.getElementById('signatureInput').value = '';
+            document.getElementById('senderUsername').value = '';
+            document.getElementById('decryptVerifyResult').innerHTML = '';
+            showNotification('Form cleared', 'info');
+        }
+        
+        function setButtonLoading(button, isLoading) {
+            if (isLoading) {
+                button.originalText = button.innerHTML;
+                button.innerHTML = '<span class="spinner"></span> Processing...';
+                button.disabled = true;
+            } else {
+                button.innerHTML = button.originalText;
+                button.disabled = false;
+            }
+        }
+        
+        function showNotification(message, type) {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.innerHTML = message;
+            document.body.appendChild(notification);
+            setTimeout(() => notification.remove(), 3000);
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // Auto-load message if coming from profile
+        if (messageId) {
+            // Find and select the message in dropdown
+            setTimeout(() => {
+                const select = document.getElementById('messageSelect');
+                if (select) {
+                    for (let i = 0; i < select.options.length; i++) {
+                        if (select.options[i].value == messageId) {
+                            select.selectedIndex = i;
+                            loadSelectedMessage();
+                            break;
+                        }
+                    }
+                }
+            }, 500);
+        }
+        
+        // Check key status when page loads
+        checkKeyStatus();
+    </script>
+</body>
+</html>

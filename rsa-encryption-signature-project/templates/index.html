@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RSA Encryption & Digital Signature Tool</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo">RSA Crypto Tool</div>
+            <div class="nav-links">
+                <a href="/" class="active">Home</a>
+                {% if user %}
+                    <a href="/generate_keys">Generate Keys</a>
+                    <a href="/encrypt_sign">Encrypt + Sign</a>
+                    <a href="/decrypt_verify">Decrypt + Verify</a>
+                    <a href="/workflow">Workflow</a>
+                    <a href="/profile">Profile</a>
+                    <a href="/logout">Logout</a>
+                {% else %}
+                    <a href="/login">Login</a>
+                    <a href="/register">Register</a>
+                    <a href="/workflow">Workflow</a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        {% if user %}
+            <!-- Welcome Banner for Logged-in Users -->
+            <div class="hero-section">
+                <div class="hero-title">Welcome back, {{ user.username }}! 👋</div>
+                <div class="hero-subtitle">Secure Message Encryption with Authenticity Verification</div>
+            </div>
+
+            <!-- Quick Stats -->
+            <div class="stats-container">
+                <div class="stat-card">
+                    <div class="stat-number">{{ user.key_size or 2048 }}</div>
+                    <div class="stat-label">Bit Encryption</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">RSA-{{ user.key_size or 2048 }}</div>
+                    <div class="stat-label">Algorithm</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">SHA-256</div>
+                    <div class="stat-label">Hashing</div>
+                </div>
+            </div>
+
+            <!-- Action Cards -->
+            <div class="grid-2">
+                <div class="workflow-step" style="cursor: pointer;" onclick="location.href='/generate_keys'">
+                    <div class="step-number">1</div>
+                    <div class="step-title">🔑 Manage RSA Keys</div>
+                    <p>Generate, save, or update your key pair for secure communication</p>
+                    <button class="btn btn-primary">Manage Keys →</button>
+                </div>
+
+                <div class="workflow-step" style="cursor: pointer;" onclick="location.href='/encrypt_sign'">
+                    <div class="step-number">2</div>
+                    <div class="step-title">📤 Send Secure Message</div>
+                    <p>Encrypt and sign messages for other users with digital signatures</p>
+                    <button class="btn btn-primary">Send Message →</button>
+                </div>
+
+                <div class="workflow-step" style="cursor: pointer;" onclick="location.href='/decrypt_verify'">
+                    <div class="step-number">3</div>
+                    <div class="step-title">📥 Receive & Verify</div>
+                    <p>Decrypt incoming messages and verify sender authenticity</p>
+                    <button class="btn btn-primary">Receive →</button>
+                </div>
+
+                <div class="workflow-step" style="cursor: pointer;" onclick="location.href='/workflow'">
+                    <div class="step-number">4</div>
+                    <div class="step-title">📖 Learn Workflow</div>
+                    <p>Understand how RSA encryption and digital signatures work</p>
+                    <button class="btn btn-primary">Learn More →</button>
+                </div>
+            </div>
+
+            {% if not user.public_key %}
+                <div class="alert alert-warning" style="margin-top: 2rem;">
+                    ⚠️ <strong>You don't have any keys yet!</strong><br>
+                    Please go to <a href="/generate_keys">Generate Keys</a> to create your key pair for secure communication.
+                </div>
+            {% endif %}
+        {% else %}
+            <!-- Hero Section for Non-Logged-in Users -->
+            <div class="hero-section">
+                <div class="hero-title">🔐 RSA Encryption + Digital Signature Tool</div>
+                <div class="hero-subtitle">Enterprise-Grade Security with Military-Standard Encryption</div>
+                <div style="margin-top: 2rem;">
+                    <a href="/login" class="btn btn-primary">Login to Start</a>
+                    <a href="/register" class="btn btn-success">Create Free Account</a>
+                </div>
+            </div>
+
+            <!-- Features Section -->
+            <h2>🚀 Powerful Security Features</h2>
+            <div class="grid-3">
+                <div class="feature-card">
+                    <div class="feature-icon">🔒</div>
+                    <div class="feature-title">End-to-End Encryption</div>
+                    <div class="feature-description">Messages encrypted with recipient's public key ensure only intended receiver can decrypt.</div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">✍️</div>
+                    <div class="feature-title">Digital Signatures</div>
+                    <div class="feature-description">Cryptographically sign messages to prove authenticity and prevent tampering.</div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">✅</div>
+                    <div class="feature-title">Identity Verification</div>
+                    <div class="feature-description">Verify sender identity through digital signatures - no impersonation possible.</div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔑</div>
+                    <div class="feature-title">RSA-2048 Encryption</div>
+                    <div class="feature-description">Military-grade 2048-bit RSA encryption for maximum security.</div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📊</div>
+                    <div class="feature-title">SHA-256 Hashing</div>
+                    <div class="feature-description">Secure hash algorithm for message integrity verification.</div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">💾</div>
+                    <div class="feature-title">Key Management</div>
+                    <div class="feature-description">Generate, save, and manage your RSA key pairs securely.</div>
+                </div>
+            </div>
+
+            <!-- How It Works -->
+            <h2>⚡ How It Works</h2>
+            <div class="workflow-container" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <div class="grid-4">
+                    <div class="workflow-step">
+                        <div class="step-number">1</div>
+                        <div class="step-title">Generate Keys</div>
+                        <p>Create your unique RSA key pair</p>
+                    </div>
+                    <div class="workflow-step">
+                        <div class="step-number">2</div>
+                        <div class="step-title">Encrypt + Sign</div>
+                        <p>Encrypt with receiver's public key & sign with your private key</p>
+                    </div>
+                    <div class="workflow-step">
+                        <div class="step-number">3</div>
+                        <div class="step-title">Send Securely</div>
+                        <p>Transmit encrypted message + signature</p>
+                    </div>
+                    <div class="workflow-step">
+                        <div class="step-number">4</div>
+                        <div class="step-title">Decrypt + Verify</div>
+                        <p>Decrypt & verify sender identity</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Advantages Section -->
+            <h2>💪 Why Choose Our RSA Tool?</h2>
+            <div class="grid-2">
+                <div class="card">
+                    <div class="card-header">🔐 Military-Grade Security</div>
+                    <p>Uses RSA-2048 encryption, the same standard used by banks and governments worldwide.</p>
+                </div>
+                <div class="card">
+                    <div class="card-header">✅ Tamper-Proof Messages</div>
+                    <p>Digital signatures ensure messages cannot be altered without detection.</p>
+                </div>
+                <div class="card">
+                    <div class="card-header">🆔 Sender Authentication</div>
+                    <p>Cryptographically verify the identity of every message sender.</p>
+                </div>
+                <div class="card">
+                    <div class="card-header">🚫 Non-Repudiation</div>
+                    <p>Senders cannot deny sending messages - legally binding digital signatures.</p>
+                </div>
+                <div class="card">
+                    <div class="card-header">💻 User-Friendly Interface</div>
+                    <p>Simple, intuitive design makes complex cryptography accessible to everyone.</p>
+                </div>
+                <div class="card">
+                    <div class="card-header">📱 Cross-Platform</div>
+                    <p>Access your secure messaging from any device with a web browser.</p>
+                </div>
+            </div>
+
+            <!-- Security Stats -->
+            <div class="stats-container">
+                <div class="stat-card">
+                    <div class="stat-number">2,048</div>
+                    <div class="stat-label">Bits Encryption</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">256</div>
+                    <div class="stat-label">Bit Hash</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">99.9%</div>
+                    <div class="stat-label">Security Rating</div>
+                </div>
+            </div>
+
+            <!-- Call to Action -->
+            <div style="text-align: center; margin-top: 3rem; padding: 2rem; background: linear-gradient(135deg, var(--primary), var(--secondary)); border-radius: var(--radius-lg); color: white;">
+                <h3 style="color: white; margin-bottom: 1rem;">Ready to Secure Your Communications?</h3>
+                <p style="margin-bottom: 1.5rem;">Join thousands of users who trust our RSA encryption for their secure messaging needs.</p>
+                <a href="/register" class="btn btn-success" style="background: white; color: var(--primary);">Get Started Free →</a>
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="footer">
+        <p>🔒 RSA-2048 Encryption | Digital Signatures (PSS) | SHA-256 Hashing | Identity Verification</p>
+        <p style="font-size: 0.8rem; margin-top: 0.5rem;">Military-Grade Security for Your Communications</p>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

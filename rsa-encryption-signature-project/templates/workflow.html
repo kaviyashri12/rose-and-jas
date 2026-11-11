@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RSA Workflow - How It Works</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .diagram {
+            background: white;
+            padding: 2rem;
+            border-radius: 15px;
+            margin: 2rem 0;
+            overflow-x: auto;
+        }
+        .flow-diagram {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+        }
+        .flow-row {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            flex-wrap: wrap;
+        }
+        .flow-box {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 1rem;
+            border-radius: 10px;
+            min-width: 200px;
+            text-align: center;
+        }
+        .arrow {
+            font-size: 2rem;
+            color: var(--primary);
+        }
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+        .comparison-table th, .comparison-table td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        .comparison-table th {
+            background: var(--primary);
+            color: white;
+        }
+        .comparison-table tr:nth-child(even) {
+            background: #f1f5f9;
+        }
+        .formula {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 10px;
+            font-family: monospace;
+            text-align: center;
+            margin: 1rem 0;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo">🔐 RSA Crypto Tool</div>
+            <div class="nav-links">
+                <a href="/">Home</a>
+                <a href="/generate_keys">Generate Keys</a>
+                <a href="/encrypt_sign">Encrypt + Sign</a>
+                <a href="/decrypt_verify">Decrypt + Verify</a>
+                <a href="/workflow" class="active">Workflow</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h1>📖 RSA Encryption + Digital Signature Workflow</h1>
+        <p class="subtitle">Understanding how secure communication works with RSA</p>
+
+        <!-- Main Workflow Diagram -->
+        <h2>🔄 Complete Communication Flow</h2>
+        <div class="diagram">
+            <div class="flow-diagram">
+                <div class="flow-box">
+                    <strong>👤 Alice (Sender)</strong><br>
+                    Message: "Hello Bob!"
+                </div>
+                <div class="arrow">⬇</div>
+                <div class="flow-row">
+                    <div class="flow-box" style="background: #10b981;">
+                        <strong>Step 1: Encryption</strong><br>
+                        Encrypt with Bob's Public Key
+                    </div>
+                    <div class="flow-box" style="background: #f59e0b;">
+                        <strong>Step 2: Signing</strong><br>
+                        Sign with Alice's Private Key
+                    </div>
+                </div>
+                <div class="arrow">⬇</div>
+                <div class="flow-box" style="background: #ef4444;">
+                    <strong>📦 Send Package</strong><br>
+                    Encrypted Message + Digital Signature
+                </div>
+                <div class="arrow">⬇</div>
+                <div class="flow-row">
+                    <div class="flow-box" style="background: #10b981;">
+                        <strong>Step 3: Decryption</strong><br>
+                        Decrypt with Bob's Private Key
+                    </div>
+                    <div class="flow-box" style="background: #f59e0b;">
+                        <strong>Step 4: Verification</strong><br>
+                        Verify with Alice's Public Key
+                    </div>
+                </div>
+                <div class="arrow">⬇</div>
+                <div class="flow-box">
+                    <strong>👤 Bob (Receiver)</strong><br>
+                    "Hello Bob!" ✓ Verified
+                </div>
+            </div>
+        </div>
+
+        <!-- Detailed Steps -->
+        <h2>🔬 Detailed Step-by-Step Process</h2>
+        
+        <div class="workflow-container">
+            <div class="workflow-step">
+                <div class="step-number">1</div>
+                <div class="step-title">📋 Key Generation</div>
+                <p>Each user generates a unique key pair:</p>
+                <div class="formula">
+                    Public Key (e, n) + Private Key (d, n)
+                </div>
+                <ul>
+                    <li><strong>Public Key:</strong> Shared openly with everyone</li>
+                    <li><strong>Private Key:</strong> Kept secret by the owner</li>
+                </ul>
+            </div>
+
+            <div class="arrow-down">▼</div>
+
+            <div class="workflow-step">
+                <div class="step-number">2</div>
+                <div class="step-title">✏️ Message Preparation (Sender Side)</div>
+                <p>Alice prepares to send a message to Bob:</p>
+                <div class="formula">
+                    Original Message: M = "Hello Bob!"
+                </div>
+                <ul>
+                    <li>Creates hash of message: H = SHA-256(M)</li>
+                    <li>Encrypts message: C = Encrypt(M, Bob's Public Key)</li>
+                    <li>Signs hash: S = Sign(H, Alice's Private Key)</li>
+                </ul>
+            </div>
+
+            <div class="arrow-down">▼</div>
+
+            <div class="workflow-step">
+                <div class="step-number">3</div>
+                <div class="step-title">📤 Transmission</div>
+                <p>Send the package over insecure channel:</p>
+                <div class="formula">
+                    Send: (C, S)
+                </div>
+                <ul>
+                    <li>C = Encrypted Message</li>
+                    <li>S = Digital Signature</li>
+                </ul>
+            </div>
+
+            <div class="arrow-down">▼</div>
+
+            <div class="workflow-step">
+                <div class="step-number">4</div>
+                <div class="step-title">📥 Reception (Receiver Side)</div>
+                <p>Bob receives and processes the message:</p>
+                <div class="formula">
+                    Decrypt: M' = Decrypt(C, Bob's Private Key)<br>
+                    Verify: Valid = Verify(M', S, Alice's Public Key)
+                </div>
+                <ul>
+                    <li>Decrypts message using his private key</li>
+                    <li>Verifies signature using Alice's public key</li>
+                    <li>If verification passes → Message is authentic!</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Mathematical Foundation -->
+        <h2>🧮 RSA Mathematical Foundation</h2>
+        <div class="diagram">
+            <div class="formula">
+                <strong>Key Generation:</strong><br>
+                1. Choose two large primes: p, q<br>
+                2. Compute n = p × q<br>
+                3. Compute φ(n) = (p-1) × (q-1)<br>
+                4. Choose e such that 1 < e < φ(n) and gcd(e, φ(n)) = 1<br>
+                5. Compute d such that (d × e) ≡ 1 mod φ(n)<br>
+                <br>
+                <strong>Public Key:</strong> (e, n)<br>
+                <strong>Private Key:</strong> (d, n)<br>
+                <br>
+                <strong>Encryption:</strong> C = M^e mod n<br>
+                <strong>Decryption:</strong> M = C^d mod n
+            </div>
+        </div>
+
+        <!-- Security Properties -->
+        <h2>🛡️ Security Properties</h2>
+        <div class="grid-2">
+            <div class="workflow-step">
+                <div class="step-title">🔒 Confidentiality</div>
+                <p>Only the intended recipient can decrypt the message using their private key. Even if intercepted, the message remains unreadable.</p>
+            </div>
+            <div class="workflow-step">
+                <div class="step-title">✅ Integrity</div>
+                <p>Any tampering with the message will cause signature verification to fail, alerting the recipient.</p>
+            </div>
+            <div class="workflow-step">
+                <div class="step-title">🆔 Authentication</div>
+                <p>The digital signature proves the message came from the claimed sender, as only they have their private key.</p>
+            </div>
+            <div class="workflow-step">
+                <div class="step-title">🚫 Non-Repudiation</div>
+                <p>The sender cannot deny sending the message because their unique signature is mathematically linked to them.</p>
+            </div>
+        </div>
+
+        <!-- Comparison Table -->
+        <h2>📊 Encryption vs Digital Signature</h2>
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>Feature</th>
+                    <th>Encryption</th>
+                    <th>Digital Signature</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td><strong>Purpose</strong></td><td>Protect confidentiality</td><td>Verify authenticity & integrity</td></tr>
+                <tr><td><strong>Key Used</strong></td><td>Recipient's Public Key</td><td>Sender's Private Key</td></tr>
+                <tr><td><strong>Operation</strong></td><td>Encrypt: Public Key<br>Decrypt: Private Key</td><td>Sign: Private Key<br>Verify: Public Key</td></tr>
+                <tr><td><strong>Output</strong></td><td>Ciphertext</td><td>Signature</td></tr>
+                <tr><td><strong>Who can read?</strong></td><td>Only key owner</td><td>Anyone (for verification)</td></tr>
+            </tbody>
+        </table>
+
+        <!-- Real-World Applications -->
+        <h2>🌍 Real-World Applications</h2>
+        <div class="grid-2">
+            <div class="workflow-step">
+                <div class="step-title">🔐 SSL/TLS (HTTPS)</div>
+                <p>Secure website connections use RSA for initial key exchange and authentication.</p>
+            </div>
+            <div class="workflow-step">
+                <div class="step-title">📧 Email Encryption</div>
+                <p>PGP and S/MIME use RSA to secure email communications.</p>
+            </div>
+            <div class="workflow-step">
+                <div class="step-title">💳 Digital Signatures</div>
+                <p>Legal documents, software distribution, and financial transactions.</p>
+            </div>
+            <div class="workflow-step">
+                <div class="step-title">🔑 SSH Authentication</div>
+                <p>Secure shell uses RSA keys for password-less login.</p>
+            </div>
+        </div>
+
+        <!-- Best Practices -->
+        <div style="margin-top: 2rem; padding: 1.5rem; background: #fef3c7; border-radius: 15px;">
+            <h2>⭐ Best Practices & Recommendations</h2>
+            <ul style="margin-left: 1.5rem; line-height: 1.8;">
+                <li>✅ Always use <strong>key size of at least 2048 bits</strong> for production systems</li>
+                <li>✅ Store private keys in secure, encrypted locations</li>
+                <li>✅ Never share private keys or transmit them over networks</li>
+                <li>✅ Use different key pairs for encryption and signing</li>
+                <li>✅ Regularly rotate keys and revoke compromised ones</li>
+                <li>✅ Use hardware security modules (HSM) for high-security applications</li>
+                <li>✅ Combine with other algorithms (AES for bulk encryption, RSA for key exchange)</li>
+            </ul>
+        </div>
+
+        <!-- Interactive Demo Note -->
+        <div style="margin-top: 2rem; text-align: center;">
+            <a href="/generate_keys" class="btn btn-primary">🎯 Try It Yourself → Generate Keys</a>
+            <a href="/encrypt_sign" class="btn btn-success">📤 Encrypt & Sign a Message</a>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>🔒 Understanding RSA Encryption & Digital Signatures | Mathematical Security at Its Best</p>
+    </div>
+</body>
+</html>

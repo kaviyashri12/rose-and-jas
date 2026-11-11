@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Encrypt & Sign - RSA Crypto Tool</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo">🔐 RSA Crypto Tool</div>
+            <div class="nav-links">
+                <a href="/">Home</a>
+                <a href="/generate_keys">Generate Keys</a>
+                <a href="/encrypt_sign" class="active">Encrypt + Sign</a>
+                <a href="/decrypt_verify">Decrypt + Verify</a>
+                <a href="/workflow">Workflow</a>
+                <a href="/profile">Profile</a>
+                <a href="/logout">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h1>📤 Encrypt & Sign Message</h1>
+        <p class="subtitle">Send secure messages with digital signature and identity verification</p>
+
+        <!-- Key Status Check -->
+        <div id="keyStatus" style="margin-bottom: 1.5rem;"></div>
+
+        <div class="form-group">
+            <label>✏️ Your Message:</label>
+            <textarea id="message" placeholder="Enter the secret message you want to send..." rows="5"></textarea>
+        </div>
+
+        <div class="form-group">
+            <label>👤 Select Receiver:</label>
+            <select id="receiverUsername">
+                <option value="">-- Select a user --</option>
+                {% for u in users %}
+                    <option value="{{ u.username }}">{{ u.username }} ({{ u.email }})</option>
+                {% endfor %}
+            </select>
+            {% if users|length == 0 %}
+                <small style="color: #ef4444;">⚠️ No other users found. Ask someone to register!</small>
+            {% endif %}
+        </div>
+
+        <div class="form-group">
+            <label>🔒 Your Private Key (Auto-filled from your account):</label>
+            <textarea id="senderPrivateKey" placeholder="Your private key will be auto-filled" readonly rows="8">{{ user.private_key if user.private_key else '⚠️ No keys found. Please generate keys first on the Generate Keys page.' }}</textarea>
+            {% if not user.private_key %}
+                <small style="color: #ef4444;">⚠️ You don't have any keys! Please go to <a href="/generate_keys">Generate Keys</a> page first.</small>
+            {% endif %}
+        </div>
+
+        <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1rem;">
+            <button class="btn btn-primary" onclick="encryptAndSign()">🔐 Encrypt & Send</button>
+            <button class="btn btn-secondary" onclick="clearForm()">🗑️ Clear Form</button>
+        </div>
+
+        <div id="encryptSignResult" style="margin-top: 2rem;"></div>
+
+        <!-- Information Box -->
+        <div style="margin-top: 2rem; padding: 1.5rem; background: linear-gradient(135deg, #e0f2fe, #bae6fd); border-radius: 15px;">
+            <h3 style="margin-top: 0;">📖 How Secure Messaging Works</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-top: 1rem;">
+                <div>
+                    <strong>1️⃣ Encryption</strong>
+                    <p style="font-size: 0.9rem; margin-top: 0.25rem;">Your message is encrypted using <strong>Receiver's Public Key</strong>. Only the receiver can decrypt it.</p>
+                </div>
+                <div>
+                    <strong>2️⃣ Digital Signature</strong>
+                    <p style="font-size: 0.9rem; margin-top: 0.25rem;">You sign the message using <strong>Your Private Key</strong>. This proves it's really from you.</p>
+                </div>
+                <div>
+                    <strong>3️⃣ Secure Transmission</strong>
+                    <p style="font-size: 0.9rem; margin-top: 0.25rem;">Both encrypted message and signature are sent together to the receiver.</p>
+                </div>
+                <div>
+                    <strong>4️⃣ Verification</strong>
+                    <p style="font-size: 0.9rem; margin-top: 0.25rem;">Receiver decrypts with their private key and verifies your signature with your public key.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Security Tips -->
+        <div style="margin-top: 1.5rem; padding: 1rem; background: #fef3c7; border-radius: 10px;">
+            <strong>🔒 Security Tips:</strong>
+            <ul style="margin-top: 0.5rem; margin-left: 1.5rem;">
+                <li>Never share your <strong>Private Key</strong> with anyone</li>
+                <li>Share your <strong>Public Key</strong> freely so others can send you encrypted messages</li>
+                <li>Always verify the receiver's username before sending</li>
+                <li>For maximum security, use 2048-bit or higher keys</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>🔒 RSA-2048 Encryption | Digital Signatures (RSA-PSS) | SHA-256 Hashing | Identity Verification</p>
+    </div>
+
+    <style>
+        .alert {
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .alert-success {
+            background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+            border-left: 4px solid #10b981;
+            color: #065f46;
+        }
+        .alert-warning {
+            background: linear-gradient(135deg, #fef3c7, #fde68a);
+            border-left: 4px solid #f59e0b;
+            color: #92400e;
+        }
+        .alert-info {
+            background: linear-gradient(135deg, #e0f2fe, #bae6fd);
+            border-left: 4px solid #06b6d4;
+            color: #0c4a6e;
+        }
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.6s linear infinite;
+            margin-right: 8px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 16px 24px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            z-index: 10000;
+            animation: slideInRight 0.3s ease-out;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 300px;
+        }
+        .notification.success {
+            background: linear-gradient(135deg, #10b981, #059669);
+        }
+        .notification.error {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+        }
+        .notification.warning {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+        }
+        .notification.info {
+            background: linear-gradient(135deg, #06b6d4, #0891b2);
+        }
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        @keyframes slideOutRight {
+            from {
+                opacity: 1;
+                transform: translateX(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+        }
+    </style>
+
+    <script>
+        // Check key status on page load
+        async function checkKeyStatus() {
+            try {
+                const response = await fetch('/api/check_keys');
+                const data = await response.json();
+                
+                const statusDiv = document.getElementById('keyStatus');
+                if (statusDiv) {
+                    if (data.has_private_key) {
+                        statusDiv.innerHTML = `
+                            <div class="alert alert-success">
+                                <strong>✅ Key Status:</strong> You have valid ${data.key_size}-bit RSA keys! Ready to encrypt and sign messages.
+                            </div>
+                        `;
+                    } else {
+                        statusDiv.innerHTML = `
+                            <div class="alert alert-warning">
+                                <strong>⚠️ Key Status:</strong> No keys found! Please go to <a href="/generate_keys" style="color: #92400e;">Generate Keys</a> page to create your key pair first.
+                            </div>
+                        `;
+                    }
+                }
+            } catch (error) {
+                console.error('Error checking keys:', error);
+            }
+        }
+
+        // Show notification
+        function showNotification(message, type = 'success') {
+            const existingNotifications = document.querySelectorAll('.notification');
+            existingNotifications.forEach(notif => notif.remove());
+            
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            
+            let icon = '';
+            switch(type) {
+                case 'success': icon = '✅'; break;
+                case 'error': icon = '❌'; break;
+                case 'warning': icon = '⚠️'; break;
+                case 'info': icon = 'ℹ️'; break;
+                default: icon = '✅';
+            }
+            
+            notification.innerHTML = `${icon} ${message}`;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.animation = 'slideOutRight 0.3s ease-out';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+
+        // Set button loading state
+        function setButtonLoading(button, isLoading) {
+            if (isLoading) {
+                button.originalText = button.innerHTML;
+                button.innerHTML = '<span class="spinner"></span> Processing...';
+                button.disabled = true;
+            } else {
+                button.innerHTML = button.originalText;
+                button.disabled = false;
+            }
+        }
+
+        // Escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Copy to clipboard
+        async function copyToClipboard(text) {
+            try {
+                await navigator.clipboard.writeText(text);
+                showNotification('📋 Copied to clipboard!', 'success');
+            } catch (err) {
+                showNotification('Failed to copy', 'error');
+            }
+        }
+
+        // Clear form
+        function clearForm() {
+            document.getElementById('message').value = '';
+            document.getElementById('receiverUsername').value = '';
+            document.getElementById('encryptSignResult').innerHTML = '';
+            showNotification('Form cleared successfully', 'info');
+        }
+
+        // Encrypt and Sign
+        async function encryptAndSign() {
+            const message = document.getElementById('message').value;
+            const receiverUsername = document.getElementById('receiverUsername').value;
+            const senderPrivateKey = document.getElementById('senderPrivateKey').value;
+            
+            if (!message) {
+                showNotification('Please enter a message to send', 'warning');
+                return;
+            }
+            
+            if (!receiverUsername) {
+                showNotification('Please select a receiver', 'warning');
+                return;
+            }
+            
+            if (!senderPrivateKey || senderPrivateKey.includes('No keys found')) {
+                showNotification('You don\'t have a private key! Please generate keys first.', 'error');
+                return;
+            }
+            
+            const resultDiv = document.getElementById('encryptSignResult');
+            const encryptBtn = event.target;
+            
+            setButtonLoading(encryptBtn, true);
+            resultDiv.innerHTML = '<div class="result-content"><span class="spinner"></span> 🔐 Encrypting and signing your message...</div>';
+            
+            try {
+                const response = await fetch('/api/encrypt_sign', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: message,
+                        receiver_username: receiverUsername,
+                        sender_private_key: senderPrivateKey
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showNotification(`✅ Message sent securely to ${data.receiver}!`, 'success');
+                    resultDiv.innerHTML = `
+                        <div class="result-box">
+                            <div class="result-title">✅ Message Sent Successfully!</div>
+                            <div class="alert alert-success" style="margin-top: 0.5rem;">
+                                <strong>📨 Message Details:</strong><br>
+                                From: <strong>${escapeHtml(data.sender)}</strong> → To: <strong>${escapeHtml(data.receiver)}</strong><br>
+                                Message ID: ${data.message_id}<br>
+                                Timestamp: ${new Date().toLocaleString()}
+                            </div>
+                            
+                            <div class="result-title" style="margin-top: 1rem;">🔐 Encrypted Message (Base64)</div>
+                            <div class="result-content" id="encryptedMsg" style="font-family: monospace; font-size: 0.8rem; word-break: break-all;">${escapeHtml(data.encrypted_message)}</div>
+                            <button class="btn btn-secondary" onclick="copyToClipboard(document.getElementById('encryptedMsg').innerText)" style="margin-top: 0.5rem;">📋 Copy Encrypted Message</button>
+                            
+                            <div class="result-title" style="margin-top: 1rem;">✍️ Digital Signature (Base64)</div>
+                            <div class="result-content" id="signature" style="font-family: monospace; font-size: 0.8rem; word-break: break-all;">${escapeHtml(data.signature)}</div>
+                            <button class="btn btn-secondary" onclick="copyToClipboard(document.getElementById('signature').innerText)" style="margin-top: 0.5rem;">📋 Copy Signature</button>
+                            
+                            <div class="result-title" style="margin-top: 1rem;">🔢 Message Hash (SHA-256)</div>
+                            <div class="result-content" style="font-family: monospace;">${escapeHtml(data.message_hash)}</div>
+                            
+                            <div class="alert alert-info" style="margin-top: 1rem;">
+                                <strong>💡 What happens next?</strong><br>
+                                The receiver can now:
+                                <ol style="margin-top: 0.5rem; margin-left: 1.5rem;">
+                                    <li>Go to <strong>Decrypt + Verify</strong> page</li>
+                                    <li>Select this message from their inbox or paste the encrypted message and signature</li>
+                                    <li>Enter your username as the sender</li>
+                                    <li>Click "Decrypt & Verify" to read the message and verify it's really from you</li>
+                                </ol>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Clear message field after successful send
+                    document.getElementById('message').value = '';
+                } else {
+                    showNotification(data.error || 'Failed to send message', 'error');
+                    resultDiv.innerHTML = `
+                        <div class="result-box error">
+                            <strong>❌ Error:</strong><br>
+                            ${escapeHtml(data.error)}
+                            <div class="alert alert-warning" style="margin-top: 1rem;">
+                                <strong>💡 Possible solutions:</strong><br>
+                                • Make sure the receiver has registered and has public keys<br>
+                                • Check that you have valid private keys<br>
+                                • Verify the receiver's username is correct<br>
+                                • Try regenerating your keys on the Generate Keys page
+                            </div>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                showNotification(error.message, 'error');
+                resultDiv.innerHTML = `<div class="result-box error">❌ Network Error: ${escapeHtml(error.message)}</div>`;
+            } finally {
+                setButtonLoading(encryptBtn, false);
+            }
+        }
+
+        // Check key status when page loads
+        checkKeyStatus();
+        
+        // Auto-refresh key status every 30 seconds
+        setInterval(checkKeyStatus, 30000);
+    </script>
+</body>
+</html>

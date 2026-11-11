@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Profile - RSA Crypto Tool</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .profile-container {
+            display: grid;
+            grid-template-columns: 1fr 1.5fr;
+            gap: 2rem;
+        }
+        
+        .profile-card {
+            background: linear-gradient(135deg, var(--white), var(--gray-bg));
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            box-shadow: var(--shadow-lg);
+            border: 1px solid rgba(79, 70, 229, 0.1);
+        }
+        
+        .profile-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        .profile-avatar {
+            width: 100px;
+            height: 100px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            box-shadow: var(--shadow-lg);
+        }
+        
+        .profile-info {
+            margin-top: 1.5rem;
+        }
+        
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .info-label {
+            font-weight: 600;
+            color: var(--dark);
+        }
+        
+        .info-value {
+            color: var(--gray);
+            font-family: monospace;
+        }
+        
+        .key-actions {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-top: 1.5rem;
+            justify-content: center;
+        }
+        
+        .messages-card {
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            box-shadow: var(--shadow-lg);
+        }
+        
+        .messages-table {
+            width: 100%;
+            overflow-x: auto;
+        }
+        
+        .messages-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .messages-table th {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+        
+        .messages-table td {
+            padding: 12px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .messages-table tr:hover {
+            background: var(--gray-bg);
+        }
+        
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .status-read {
+            color: var(--success);
+        }
+        
+        .status-unread {
+            color: var(--warning);
+            font-weight: 600;
+        }
+        
+        .btn-view {
+            padding: 6px 16px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            border: none;
+            border-radius: var(--radius);
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-view:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+        
+        .empty-messages {
+            text-align: center;
+            padding: 3rem;
+            color: var(--gray);
+        }
+        
+        @media (max-width: 768px) {
+            .profile-container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo">🔐 RSA Crypto Tool</div>
+            <div class="nav-links">
+                <a href="/">Home</a>
+                <a href="/generate_keys">Generate Keys</a>
+                <a href="/encrypt_sign">Encrypt + Sign</a>
+                <a href="/decrypt_verify">Decrypt + Verify</a>
+                <a href="/workflow">Workflow</a>
+                <a href="/profile" class="active">Profile</a>
+                <a href="/logout">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h1>👤 My Profile</h1>
+        <p class="subtitle">Manage your account and view message history</p>
+        
+        <div class="profile-container">
+            <!-- Left Column - Profile Info -->
+            <div class="profile-card">
+                <div class="profile-header">
+                    <div class="profile-avatar">
+                        {{ user.username[0].upper() }}
+                    </div>
+                    <h2>{{ user.username }}</h2>
+                    <p class="subtitle">{{ user.email }}</p>
+                </div>
+                
+                <div class="profile-info">
+                    <div class="info-row">
+                        <span class="info-label">📅 Member since:</span>
+                        <span class="info-value" id="memberSince">{{ user.created_at.strftime('%Y-%m-%d %H:%M:%S') if user.created_at else 'N/A' }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">🕐 Last login:</span>
+                        <span class="info-value" id="lastLogin">{{ user.last_login.strftime('%Y-%m-%d %H:%M:%S') if user.last_login else 'N/A' }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">🔑 Key size:</span>
+                        <span class="info-value">{{ user.key_size }} bits RSA</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">🔐 Encryption:</span>
+                        <span class="info-value">RSA-OAEP</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">✍️ Signature:</span>
+                        <span class="info-value">RSA-PSS</span>
+                    </div>
+                </div>
+                
+                <div class="key-actions">
+                    <button class="btn btn-primary" onclick="showPublicKey()">👁️ View Public Key</button>
+                    <button class="btn btn-success" onclick="downloadPublicKey()">📥 Download Public Key</button>
+                    <button class="btn btn-warning" onclick="regenerateKeys()">🔄 Regenerate Keys</button>
+                </div>
+                
+                <div id="keyDisplay" style="display: none; margin-top: 1.5rem;">
+                    <div class="result-box">
+                        <div class="result-title">🔓 Your Public Key</div>
+                        <div class="result-content" id="publicKeyContent">{{ user.public_key if user.public_key else 'No keys generated yet' }}</div>
+                        <button class="btn btn-secondary" onclick="copyPublicKey()" style="margin-top: 0.5rem;">📋 Copy to Clipboard</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Right Column - Messages -->
+            <div class="messages-card">
+                <h3>📨 Recent Messages</h3>
+                <div id="messagesList" class="messages-table">
+                    <div class="empty-messages">Loading messages...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>🔒 RSA-2048 Encryption | Digital Signatures | Secure Messaging</p>
+    </div>
+
+    <script>
+        function showPublicKey() {
+            const display = document.getElementById('keyDisplay');
+            display.style.display = display.style.display === 'none' ? 'block' : 'none';
+        }
+        
+        function copyPublicKey() {
+            const content = document.getElementById('publicKeyContent').innerText;
+            navigator.clipboard.writeText(content);
+            showNotification('📋 Public key copied to clipboard!', 'success');
+        }
+        
+        function downloadPublicKey() {
+            const content = document.getElementById('publicKeyContent').innerText;
+            const blob = new Blob([content], { type: 'text/plain' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'public_key.pem';
+            link.click();
+            showNotification('📥 Public key downloaded!', 'success');
+        }
+        
+        async function regenerateKeys() {
+            if (confirm('⚠️ Warning: Regenerating keys will replace your current keys. Continue?')) {
+                const keySize = prompt('Enter key size (2048 recommended):', '2048');
+                if (keySize) {
+                    const response = await fetch('/api/generate_keys', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ key_size: parseInt(keySize) })
+                    });
+                    
+                    const data = await response.json();
+                    if (data.success) {
+                        showNotification('✅ Keys regenerated successfully! Please save them.', 'success');
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        showNotification('❌ Failed to regenerate keys', 'error');
+                    }
+                }
+            }
+        }
+        
+        async function loadMessages() {
+            try {
+                const response = await fetch('/api/my_messages');
+                const data = await response.json();
+                
+                const messagesDiv = document.getElementById('messagesList');
+                
+                if (data.success && data.messages && data.messages.length > 0) {
+                    const messagesHtml = `
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>From</th>
+                                    <th>Date & Time</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.messages.map(msg => `
+                                    <tr>
+                                        <td><strong>${escapeHtml(msg.sender)}</strong></td>
+                                        <td>${formatDateTime(msg.timestamp)}</td>
+                                        <td>
+                                            <span class="status-badge">
+                                                ${msg.is_read ? 
+                                                    '<span class="status-read">✓ Read</span>' : 
+                                                    '<span class="status-unread">● Unread</span>'}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <button onclick="viewMessage(${msg.id})" class="btn-view">
+                                                ${msg.is_read ? '📖 View Again' : '🔓 View & Decrypt'}
+                                            </button>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                    messagesDiv.innerHTML = messagesHtml;
+                } else {
+                    messagesDiv.innerHTML = '<div class="empty-messages">📭 No messages received yet. Share your public key with others to receive messages!</div>';
+                }
+            } catch (error) {
+                console.error('Error loading messages:', error);
+                document.getElementById('messagesList').innerHTML = '<div class="empty-messages">❌ Error loading messages. Please refresh the page.</div>';
+            }
+        }
+        
+        function formatDateTime(timestamp) {
+            const date = new Date(timestamp);
+            return date.toLocaleString('en-US', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            });
+        }
+        
+        function viewMessage(messageId) {
+            // Store message ID in session and redirect to decrypt page
+            sessionStorage.setItem('viewMessageId', messageId);
+            window.location.href = '/decrypt_verify';
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function showNotification(message, type) {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.innerHTML = message;
+            document.body.appendChild(notification);
+            setTimeout(() => notification.remove(), 3000);
+        }
+        
+        // Load messages when page loads
+        loadMessages();
+        
+        // Refresh messages every 30 seconds
+        setInterval(loadMessages, 30000);
+    </script>
+</body>
+</html>
